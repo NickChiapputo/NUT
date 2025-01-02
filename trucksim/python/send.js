@@ -30,8 +30,12 @@ export const send = (uri, method, data, successCallback, errorCallback, parseRes
             }
         }
 
-        xhr.open( method, uri );
-        if( method == "POST" && data ) xhr.send( JSON.stringify( data ) );
-        else xhr.send();
+        try {
+            xhr.open( method, uri );
+            if( method == "POST" && data ) xhr.send( JSON.stringify( data ) );
+            else xhr.send();
+        } catch(ex) {
+            errorCallback( ex, undefined, undefined );
+        }
     });
 };

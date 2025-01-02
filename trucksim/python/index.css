@@ -1,0 +1,525 @@
+:root {
+    --dashboard-aspect-ratio: 2; /* Ratio of width:height */
+    --section-width: 33vw;
+    --section-height: calc((100vw / var(--dashboard-aspect-ratio)) - 2*var(--section-gap));
+    --section-gap: 0.5vw;
+
+    --speed-row-color: transparent;
+    --gear-container-color: transparent;
+
+    /* System Status Symbols */
+    --status-off: var(--Overlay0);
+    --status-on: var(--Red);
+    --retarder-on: var(--Yellow);
+    --high-beams-on: var(--Blue);
+    --low-beams-on: var(--Green);
+    --parking-lights-on: var(--Green);
+    --turn-signal-on: var(--Green);
+
+    /* Gauge */
+        /* Full-width of the containing section */
+        --gauge-width: calc(var(--section-width) - 2px); /* Height will be the same */
+        --gauge-inner-width: calc(var(--gauge-width) - 1*var(--gauge-bar-outer-width) + 1px);
+        /* --gauge-inner-width: calc(100% - var(--gauge-bar-outer-width)); */
+
+        /* Calculate how much of the gauge the bar covers */
+        /* At 100% used, the gauge starts at the bottom (270deg or -90deg). */
+        /* At 75% used, the gauge starts at 225deg and goes around to 315deg */
+        --gauge-percent-used: 75;
+        --gauge-display-percent-scalar: var(--gauge-percent-used) / 100;
+
+        /* Outer bar */
+        --gauge-bar-color-RGB: var(--RedRGB);
+        --gauge-bar-color-RGB: var(--primaryRGB);
+        --gauge-bar-outer-alpha: 0.67;
+        --gauge-bar-outer-color: rgba(var(--gauge-bar-color-RGB), var(--gauge-bar-outer-alpha));
+        --gauge-bar-outer-width: calc(var(--gauge-width) * 0.04);
+        --gauge-bar-outer-radial: radial-gradient(
+            closest-side,
+            var(--background-color) calc(100% - var(--gauge-bar-outer-width)),
+            transparent 0 100%
+        );
+
+        /* Inner bar */
+        --gauge-bar-inner-start-alpha: 0.10;
+        --gauge-bar-inner-end-alpha: 0.33;
+        --gauge-bar-inner-start-color: rgba(var(--gauge-bar-color-RGB), var(--gauge-bar-inner-start-alpha));
+        --gauge-bar-inner-end-color: rgba(var(--gauge-bar-color-RGB), var(--gauge-bar-inner-end-alpha));
+        --gauge-bar-inner-width: calc(3 * var(--gauge-bar-outer-width));
+
+        /* Endpoint */
+        --gauge-bar-endpoint-color-RGB: var(--TextRGB);
+        --gauge-bar-endpoint-alpha: 1.0;
+        --gauge-bar-endpoint-color: rgba(var(--gauge-bar-endpoint-color-RGB), var(--gauge-bar-endpoint-alpha));
+        --gauge-bar-endpoint-size: 0.25%;
+
+        /* Inner Data Container */
+        --gauge-inner-padding: var(--gauge-bar-inner-width);
+
+        /* Speed Limit */
+        --speed-limit-outer-background: var(--Red);
+        --speed-limit-inner-background: var(--foreground-text);
+        --speed-limit-text-color: var(--background-color);
+}
+
+html, body {
+    /* width: 100vw;
+    height: auto;
+    aspect-ratio: 2/1; */
+    /* overflow: hidden; */
+
+    font-family: 'Roboto';
+    /* font-family: 'Montserrat', 'Genos', 'Orbitron'; */
+    line-height: 1em;
+
+    color: var(--foreground-text);
+    background: var(--background-color);
+}
+
+html {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+body {
+    max-width: 100%;
+    max-height: 100%;
+    aspect-ratio: 1/1;
+
+    display: flex;
+    flex-flow: row nowrap;
+    column-gap: var(--section-gap);
+
+    justify-content: center;
+
+    margin: auto;
+    padding: 0;
+
+    box-sizing: border-box;
+    border: 1px solid var(--primary);
+}
+
+@property --percentage {
+    syntax: "<number>";
+    initial-value: 0;
+    inherits: true;
+}
+
+@property --speed {
+    syntax: "<number>";
+    initial-value: 0;
+    inherits: true;
+}
+
+.section {
+    aspect-ratio: 1/1;
+
+    padding-top: var(--section-gap);
+    padding-bottom: var(--section-gap);
+
+    display: flex;
+    flex-flow: column nowrap;
+
+    align-items: center;
+
+    box-sizing: border-box;
+    border: 1px solid var(--primary);
+}
+
+#map {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1/1;
+
+    background-image: url("graphics/map.png");
+    background-color: transparent;
+    background-repeat: no-repeat;
+    background-size: 100%;
+
+    background-position: center center;
+}
+
+.centerTopBottom {
+    width: 100%;
+    height: 10%;
+}
+
+#centerHeaderRow {
+    height: 100%;
+    width: 100%;
+    box-sizing: border-box;
+
+    display: flex;
+    flex-flow: row wrap;
+    justify-content: space-between;
+}
+
+#centerHeaderRow > span {
+    height: 50%;
+    width: 33%;
+    box-sizing: border-box;
+
+    font-size: calc(
+        ((var(--section-height) - var(--gauge-width)) / 2) * 0.50 * 0.35
+    );
+
+    align-content: center;
+    text-align: center;
+}
+
+.gauge {
+    --max-value: 100;
+    --percentage: 0;
+    --bg: transparent;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    max-width: 100%;
+    max-height: 80%;
+    aspect-ratio: 1/1;
+    border-radius: 50%;
+
+    background:
+        var(--gauge-bar-outer-radial),
+        conic-gradient(
+            from 225deg,
+            var(--gauge-bar-outer-color)    calc((var(--percentage) * var(--gauge-display-percent-scalar) * 1%) - (var(--gauge-bar-endpoint-size) / 2)),
+            var(--gauge-bar-endpoint-color) calc((var(--percentage) * var(--gauge-display-percent-scalar) * 1%) - (var(--gauge-bar-endpoint-size) / 2)),
+            var(--gauge-bar-endpoint-color) calc((var(--percentage) * var(--gauge-display-percent-scalar) * 1%) + (var(--gauge-bar-endpoint-size) / 2)),
+            var(--bg) 0%
+        ), var(--background-color);
+}
+
+.gaugeInner {
+    width: calc(100% - var(--gauge-bar-outer-width));
+    aspect-ratio: 1/1;
+    border-radius: 50%;
+    background-color: var(--background-color);
+    box-sizing: border-box;
+
+    overflow: hidden;
+
+    padding: var(--gauge-inner-padding);
+
+    background:
+        radial-gradient(
+            closest-side,
+            var(--background-color) calc(100% - var(--gauge-bar-inner-width)),
+            transparent 0 100%
+        ),
+        conic-gradient(
+            from 225deg,
+            var(--gauge-bar-inner-start-color) 0%,
+            var(--gauge-bar-inner-end-color) calc((var(--percentage) * var(--gauge-display-percent-scalar) * 1%) - (var(--gauge-bar-endpoint-size) / 2)),
+            var(--gauge-bar-endpoint-color)  calc((var(--percentage) * var(--gauge-display-percent-scalar) * 1%) - (var(--gauge-bar-endpoint-size) / 2)),
+            var(--gauge-bar-endpoint-color)  calc((var(--percentage) * var(--gauge-display-percent-scalar) * 1%) + (var(--gauge-bar-endpoint-size) / 2)),
+            var(--bg) 0%
+        ), var(--background-color);
+}
+
+.gaugeDataContainer {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+
+    display: flex;
+    flex-flow: column nowrap;
+
+    box-sizing: border-box;
+    border: 1px solid var(--primary);
+
+    overflow: hidden;
+}
+
+#speedLimitContainer {
+    height: 25%;
+
+    display: flex;
+    flex-flow: row nowrap;
+    justify-content: center;
+    align-items: center;
+}
+.speedLimitOuter {
+    height: 75%;
+    aspect-ratio: 1/1;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    border-radius: 50%;
+
+    margin: 0;
+    padding: 0;
+    border: none;
+
+    background: var(--speed-limit-outer-background);
+
+    container-type: size;
+}
+
+.speedLimitOuter > .speedLimitInner {
+    height: 75%;
+    aspect-ratio: 1/1;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+
+    border-radius: 50%;
+
+    font-size: 30cqmin;
+    font-weight: bold;
+
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: var(--speed-limit-inner-background);
+    color: var(--speed-limit-text-color);
+}
+
+#speedContainer {
+    height: 100%;
+    width: 50%;
+
+    box-sizing: border-box;
+
+    display: flex;
+    flex-flow: column nowrap;
+    justify-content: center;
+
+    container-type: size;
+}
+
+#speed::before {
+    counter-reset: speed var(--speed);
+    content: counter(speed);
+}
+#speed {
+    --size: 50;
+    height: calc(var(--size) * 1%);
+
+    text-align: center;
+    align-content: center;
+
+    font-size: calc(var(--size) * 1cqh);
+    font-weight: bold;
+
+    background: var(--speed-row-color);
+}
+
+#speedUnits {
+    --size: 5;
+    height: calc(var(--size) * 1%);
+    font-size: calc(var(--size) * 1cqh);
+
+    text-align: center;
+    align-content: center;
+
+
+    background: var(--speed-row-color);
+}
+
+#gaugeDataCenterRow {
+    height: 50%;
+    width: 100%;
+
+    display: flex;
+    flex-flow: row nowrap;
+
+    align-items: center;
+}
+
+#gearContainer {
+    height: 33%;
+    width: 25%;
+    box-sizing: border-box;
+
+    display: flex;
+    flex-flow: row nowrap;
+
+    padding-left: 2%;
+    padding-right: 2%;
+
+    column-gap: 5%;
+
+    background: var(--gear-container-color);
+
+    container-type: size;
+}
+
+#directionContainer {
+    height: 100%;
+    width: 1.5ch;
+
+    display: flex;
+    flex-flow: column nowrap;
+    row-gap: 0%;
+
+    overflow: hidden;
+
+    font-size: 30cqh;
+}
+
+#directionContainer > span {
+    height: 33%;
+    width: 100%;
+
+    align-content: center;
+}
+
+#directionContainer > span[data-selected="true"] {
+    color: var(--primary);
+}
+
+#gear {
+    height: 100%;
+    width: 2ch;
+
+    display: flex;
+    flex-flow: column nowrap;
+
+    justify-content: center;
+
+    font-size: 60cqh;
+    font-weight: bold;
+}
+
+/* Gauge Center Row Icons on Right Quarter */
+#centerRightIconContainer {
+    width: 25%;
+    padding: 5%;
+    box-sizing: border-box;
+    aspect-ratio: 1/2;
+
+    display: flex;
+    flex-flow: row wrap;
+    justify-content: space-between;
+}
+
+#centerRightIconContainer > div {
+    max-height: 15%;
+}
+
+div.dashlight > img {
+    /* Images to give containing divs content to set the sizing. */
+    opacity: 0;
+    max-width: 100%;
+    max-height: 100%;
+    aspect-ratio: 1/1;
+}
+
+#leftTurnSignal, #rightTurnSignal {
+    aspect-ratio: 1/1;
+    mask: url("/graphics/turn_signal.svg") no-repeat center;
+    transition: background-color 0.2s;
+    background-color: var(--status-off);
+    mask-size: contain;
+}
+#rightTurnSignal {
+    transform: rotate(180deg);
+}
+#leftTurnSignal.statusOn, #rightTurnSignal.statusOn {
+    background-color: var(--turn-signal-on);
+}
+
+#centerRightIconContainer div.dashlight {
+    width: 45%;
+    aspect-ratio: 1/1;
+    margin: auto;
+    mask-size: contain;
+
+    transition: background-color 0.2s;
+
+    background-color: var(--status-off);
+}
+#centerRightIconContainer div.dashlight.statusOn,
+#retarderLevelContainer > div.retarderLevel.statusOn {
+    background-color: var(--status-on);
+}
+
+
+#hazardsIcon {
+    mask: url("/graphics/hazards.svg") no-repeat center;
+}
+
+#highBeamsIcon {
+    mask: url("/graphics/high_beams.svg") no-repeat center;
+}
+#highBeamsIcon.statusOn {
+    background-color: var(--high-beams-on) !important;
+}
+
+#lowBeamsIcon {
+    mask: url("/graphics/low_beams.svg") no-repeat center;
+}
+#lowBeamsIcon.statusOn {
+    background-color: var(--low-beams-on) !important;
+}
+
+#parkingLightsIcon {
+    mask: url("/graphics/parking_lights.svg") no-repeat center;
+}
+#parkingLightsIcon.statusOn {
+    background-color: var(--parking-lights-on) !important;
+}
+
+#parkingBrakeIcon {
+    mask: url("/graphics/parking_brake.svg") no-repeat center;
+}
+
+#airPressureIcon {
+    mask: url("/graphics/air_pressure_warning.svg") no-repeat center;
+}
+
+#oilPressureIcon {
+    mask: url("/graphics/oil_pressure.svg") no-repeat center;
+}
+
+#engineBrakeIcon {
+    mask: url("/graphics/engine_brake.svg") no-repeat center;
+}
+
+#retarderContainer {
+    display: flex;
+    flex-flow: row nowrap;
+    column-gap: 5%;
+
+    width: 100%;
+    height: 100%;
+
+    justify-content: center;
+    align-items: center;
+}
+#retarderContainer > #retarderIcon {
+    width: 50%;
+    max-height: 100%;
+    aspect-ratio: 1/1;
+
+    margin: unset;
+    mask: url("/graphics/retarder.svg") no-repeat center;
+    mask-size: contain;
+}
+#retarderContainer > #retarderLevelContainer {
+    width: 15%;
+    height: 75%;
+
+    display: flex;
+    flex-flow: column nowrap;
+    justify-content: space-between;
+}
+#retarderLevelContainer > div.retarderLevel {
+    width: 100%;
+    height: 15%;
+    background-color: var(--status-off);
+    transition: background-color 0.2s;
+    border-radius: 20%;
+}
+#retarderContainer > #retarderIcon.statusOn,
+#retarderLevelContainer > div.retarderLevel.statusOn {
+    background-color: var(--retarder-on) !important;
+}

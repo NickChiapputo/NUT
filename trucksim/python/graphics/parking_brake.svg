@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="35mm"
+   height="35mm"
+   viewBox="0 0 35 35"
+   version="1.1"
+   id="svg5"
+   inkscape:version="1.1.2 (0a00cf5339, 2022-02-04)"
+   sodipodi:docname="parking_brake.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview7"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:document-units="mm"
+     showgrid="false"
+     inkscape:zoom="5.6568543"
+     inkscape:cx="57.010484"
+     inkscape:cy="62.667338"
+     inkscape:window-width="3416"
+     inkscape:window-height="1386"
+     inkscape:window-x="3850"
+     inkscape:window-y="40"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1"
+     fit-margin-top="0"
+     fit-margin-left="0"
+     fit-margin-right="0"
+     fit-margin-bottom="0" />
+  <defs
+     id="defs2">
+    <inkscape:path-effect
+       effect="fillet_chamfer"
+       id="path-effect5389"
+       is_visible="true"
+       lpeversion="1"
+       satellites_param="F,0,0,1,0,4.138534,0,1 @ F,0,1,1,0,4.138534,0,1 @ F,0,0,1,0,0,0,1 @ F,0,1,1,0,4.138534,0,1"
+       unit="px"
+       method="auto"
+       mode="F"
+       radius="0"
+       chamfer_steps="1"
+       flexible="false"
+       use_knot_distance="true"
+       apply_no_radius="true"
+       apply_with_radius="true"
+       only_selected="false"
+       hide_knots="false" />
+    <inkscape:path-effect
+       effect="fillet_chamfer"
+       id="path-effect4084"
+       is_visible="true"
+       lpeversion="1"
+       satellites_param="F,0,0,1,0,4.138534,0,1 @ F,0,1,1,0,4.138534,0,1 @ F,0,0,1,0,0,0,1 @ F,0,1,1,0,4.138534,0,1"
+       unit="px"
+       method="auto"
+       mode="F"
+       radius="0"
+       chamfer_steps="1"
+       flexible="false"
+       use_knot_distance="true"
+       apply_no_radius="true"
+       apply_with_radius="true"
+       only_selected="false"
+       hide_knots="false" />
+  </defs>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(-100.0172,-123.96732)">
+    <circle
+       style="font-variation-settings:'wght' 700;fill:none;stroke:#000000;stroke-width:0.809582;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       id="path31"
+       cx="117.5172"
+       cy="141.46732"
+       r="14.595209" />
+    <path
+       id="circle892"
+       style="font-variation-settings:'wght' 700;fill:none;stroke:#000000;stroke-width:0.860759;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none"
+       d="m 110.87293,157.19552 c -2.04218,-0.86378 -3.88128,-2.11366 -5.42577,-3.65816 -3.089,-3.089 -4.99958,-7.3564 -4.99958,-12.07005 0,-4.71364 1.91058,-8.98105 4.99958,-12.07004 1.5445,-1.54449 3.3836,-2.79439 5.42578,-3.65815 m 13.28852,0 c 2.04218,0.86377 3.88128,2.11366 5.42578,3.65816 1.5445,1.54449 2.79439,3.38359 3.65816,5.42577 0.86377,2.04218 1.34142,4.28744 1.34142,6.64426 0,2.35682 -0.47765,4.60209 -1.34142,6.64427 -0.86376,2.04218 -2.11365,3.88128 -3.65816,5.42578 -1.54449,1.5445 -3.38359,2.79438 -5.42577,3.65816"
+       sodipodi:nodetypes="csssccsssssc" />
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;font-size:21.0989px;line-height:1.25;font-family:sans-serif;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.282573"
+       x="110.42928"
+       y="148.96732"
+       id="text7584"><tspan
+         sodipodi:role="line"
+         id="tspan7582"
+         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:21.0989px;font-family:Roboto;-inkscape-font-specification:'Roboto Bold';stroke-width:0.282573"
+         x="110.42928"
+         y="148.96732">P</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;font-size:10.5833px;line-height:1.25;font-family:sans-serif;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
+       x="116.4596"
+       y="141.15628"
+       id="text15992"><tspan
+         sodipodi:role="line"
+         id="tspan15990"
+         style="stroke-width:0.264583"></tspan></text>
+  </g>
+</svg>

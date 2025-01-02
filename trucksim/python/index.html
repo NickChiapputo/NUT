@@ -1,20 +1,117 @@
 <html>
     <head>
-        <title>ETS2 Telemetry</title>
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta content="utf-8" http-equiv="encoding">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
 
+
+        <!-- Google Fonts Pre-reqs -->
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+        <!-- Montserrat -->
+        <link href="https://fonts.googleapis.com/css?family=Montserrat:thin,extra-light,light,100,200,300,400,500,600,700,800" rel="stylesheet">
+
+        <!-- Orbitron -->
+        <link href="https://fonts.googleapis.com/css2?family=Orbitron&display=swap" rel="stylesheet">
+
+        <!-- Genos -->
+        <link href="https://fonts.googleapis.com/css2?family=Genos:wght@300;400&display=swap" rel="stylesheet">
+
+        <!-- Roboto -->
+        <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap" rel="stylesheet">
+
+
+        <!-- JavaScript source files. -->
         <script type="module" src="index.js"></script>
         <script type="module" src="send.js"></script>
+
+        <!-- CSS Styles -->
+        <!-- Update teh colorSchemeCSS href to change the scheme. -->
+        <link rel="stylesheet" id="colorSchemeCSS" href="css/colors-mocha.css">
+        <link rel="stylesheet" href="css/colors.css">
+        <link rel="stylesheet" href="css/theme-definition.css">
+        <link rel="stylesheet" href="index.css">
+
+        <title>ETS2 Telemetry</title>
     </head>
     <body>
-        <div style="display: flex; flex-flow: column nowrap; row-gap: 1em">
-            <div style="display: flex; flex-flow: row nowrap; column-gap: 1ch">
-                <span>Status:</span><span id="status"></span>
+        <div id="center" class="section">
+            <div class="centerTopBottom">
+                <div id="centerHeaderRow">
+                    <span></span>
+                    <span id="time"></span>
+                    <span></span>
+                    <span id="leftTurnSignal"></span>
+                    <span></span>
+                    <span id="rightTurnSignal"></span>
+                </div>
             </div>
-            <div style="display: flex; flex-flow: row nowrap; column-gap: 1ch">
-                <span>Speed:</span><span id="speed"></span>
+            <div id="gauge" class="gauge">
+                <div class="gaugeInner">
+                    <div class="gaugeDataContainer">
+                        <div id="speedLimitContainer">
+                            <div class="speedLimitOuter" style="display: none;">
+                                <div class="speedLimitInner" id="speedLimit"></div>
+                            </div>
+                        </div>
+                        <div id="gaugeDataCenterRow">
+                            <div id="gearContainer">
+                                <div id="directionContainer">
+                                    <span id="directionReverse" data-selected="false">R</span>
+                                    <span id="directionNeutral" data-selected="true">N</span>
+                                    <span id="directionDrive" data-selected="false">D</span>
+                                </div>
+                                <span id="gear"></span>
+                            </div>
+                            <div id="speedContainer">
+                                <span id="speed"></span>
+                                <span id="speedUnits">km/h</span>
+                            </div>
+                            <div id="centerRightIconContainer">
+                                <div class="dashlight" id="hazardsIcon">
+                                    <img src="graphics/hazards.svg">
+                                </div>
+                                <div class="dashlight" id="highBeamsIcon">
+                                    <img src="graphics/high_beams.svg">
+                                </div>
+                                <div class="dashlight" id="lowBeamsIcon">
+                                    <img src="graphics/low_beams.svg">
+                                </div>
+                                <div class="dashlight" id="parkingLightsIcon">
+                                    <img src="graphics/parking_lights.svg">
+                                </div>
+                                <div class="dashlight" id="oilPressureIcon">
+                                    <img src="graphics/oil_pressure.svg">
+                                </div>
+                                <div class="dashlight" id="airPressureIcon">
+                                    <img src="graphics/air_pressure_warning.svg">
+                                </div>
+                                <div class="dashlight" id="parkingBrakeIcon">
+                                    <img src="graphics/parking_brake.svg">
+                                </div>
+                                <div class="dashlight" id="engineBrakeIcon">
+                                    <img src="graphics/engine_brake.svg">
+                                </div>
+                                <div id="retarderContainer">
+                                    <div class="dashlight" id="retarderIcon">
+                                        <img src="graphics/retarder.svg" style="opacity: 0; max-height: 100%; max-width: 100%; aspect-ratio: 1/1;">
+                                    </div>
+                                    <div id="retarderLevelContainer">
+                                        <!-- <div class="retarderLevel"></div> -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div style="display: flex; flex-flow: row nowrap; column-gap: 1ch">
-                <span>RPM:</span><span id="rpm"></span>
+            <div class="centerTopBottom">
+                <div id="centerHeaderRow">
+                    <span></span>
+                    <span id="odometer"></span>
+                    <span></span>
+                </div>
             </div>
         </div>
     </body>

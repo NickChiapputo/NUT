@@ -18,6 +18,9 @@
 #include <stdarg.h>
 #include <string.h>
 
+// NUT
+#include "nut.h"
+
 // Shared Memory
 
 #include <sys/ipc.h>
@@ -27,14 +30,6 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-// SDK
-
-#include "include/scssdk_telemetry.h"
-#include "include/eurotrucks2/scssdk_eut2.h"
-#include "include/eurotrucks2/scssdk_telemetry_eut2.h"
-#include "include/amtrucks/scssdk_ats.h"
-#include "include/amtrucks/scssdk_telemetry_ats.h"
-
 #define UNUSED(x)
 
 /**
@@ -43,46 +38,19 @@
 FILE *log_file = NULL;
 
 /**
- * @brief Tracking of paused state of the game.
- */
-bool output_paused = true;
-
-/**
- * @brief Should we print the data header next time
- * we are printing the data?
- */
-bool print_header = true;
-
-/**
  * @brief Last timestamp we received.
  */
 scs_timestamp_t last_timestamp = static_cast<scs_timestamp_t>(-1);
 
-/**
- * @brief Combined telemetry data.
- */
-struct telemetry_state_t
-{
-	scs_timestamp_t timestamp;
-	scs_timestamp_t raw_rendering_timestamp;
-	scs_timestamp_t raw_simulation_timestamp;
-	scs_timestamp_t raw_paused_simulation_timestamp;
+/** NUT **/
+// Shared and local objects
+struct game_data_t game_data, *shared_game_data;
+struct telemetry_state_t telemetry;
+struct navigation_data_t navigation_data;
 
-	bool	orientation_available;
-	float	heading;
-	float	pitch;
-	float	roll;
-
-	float	speed;
-	float	rpm;
-	int	gear;
-
-};
-
-struct telemetry_state_t telemetry, *shared_telemetry;
-int shared_memory_file_descriptor = 0;
-const size_t shared_memory_size = sizeof(telemetry);
-const char *SHARED_MEMORY_TELEMETRY_NAME = "ets2_telemetry";
+// Shared memory file descriptors
+int shm_game_data_fd = 0;
+/** /NUT **/
 
 
 /**
@@ -146,78 +114,30 @@ SCSAPI_VOID telemetry_frame_start(const scs_event_t UNUSED(event), const void *c
 
 	// The following processing of the timestamps is done so the output
 	// from this plugin has continuous time, it is not necessary otherwise.
-
 	// When we just initialized itself, assume that the time started
 	// just now.
-
 	if (last_timestamp == static_cast<scs_timestamp_t>(-1)) {
 		last_timestamp = info->paused_simulation_time;
 	}
 
 	// The timer might be sometimes restarted (e.g. after load) while
 	// we want to provide continuous time on our output.
-
 	if (info->flags & SCS_TELEMETRY_FRAME_START_FLAG_timer_restart) {
 		last_timestamp = 0;
 	}
-
-	// Advance the timestamp by delta since last frame.
-
-	telemetry.timestamp += (info->paused_simulation_time - last_timestamp);
-	last_timestamp = info->paused_simulation_time;
-
-	// The raw values.
-
-	telemetry.raw_rendering_timestamp = info->render_time;
-	telemetry.raw_simulation_timestamp = info->simulation_time;
-	telemetry.raw_paused_simulation_timestamp = info->paused_simulation_time;
 }
 
 SCSAPI_VOID telemetry_frame_end(const scs_event_t UNUSED(event), const void *const UNUSED(event_info), const scs_context_t UNUSED(context))
 {
-	if (output_paused) {
-		return;
-	}
-
-	// The header.
-
-	if (print_header) {
-		print_header = false;
-		log_line("timestamp[us];raw rendering timestamp[us];raw simulation timestamp[us];raw paused simulation timestamp[us];heading[deg];pitch[deg];roll[deg];speed[m/s];rpm;gear");
-	}
-
-	// The data line.
-
-	log_print("%" SCS_PF_U64 ";%" SCS_PF_U64 ";%" SCS_PF_U64 ";%" SCS_PF_U64, telemetry.timestamp, telemetry.raw_rendering_timestamp, telemetry.raw_simulation_timestamp, telemetry.raw_paused_simulation_timestamp);
-	if (telemetry.orientation_available) {
-		log_print(";%f;%f;%f", telemetry.heading, telemetry.pitch, telemetry.roll);
-	}
-	else {
-		log_print(";---;---;---");
-	}
-	log_line(
-		";%f;%f;%d",
-		telemetry.speed,
-		telemetry.rpm,
-		telemetry.gear
-	);
-
-
-	shared_telemetry->speed = telemetry.speed;
-	shared_telemetry->rpm = telemetry.rpm;
-	shared_telemetry->gear = telemetry.gear;
+	// Copy over only data that is actually updated every frame.
+	// Other data is updated with configurations or events.
+	memcpy( &shared_game_data->telemetry, &telemetry, TELEMETRY_SHM_SIZE );
+	memcpy( &shared_game_data->navigation, &navigation_data, NAVIGATION_SHM_SIZE );
 }
 
 SCSAPI_VOID telemetry_pause(const scs_event_t event, const void *const UNUSED(event_info), const scs_context_t UNUSED(context))
 {
-	output_paused = (event == SCS_TELEMETRY_EVENT_paused);
-	if (output_paused) {
-		log_line("Telemetry paused");
-	}
-	else {
-		log_line("Telemetry unpaused");
-	}
-	print_header = true;
+	shared_game_data->paused = event == SCS_TELEMETRY_EVENT_paused;
 }
 
 void telemetry_print_attributes(const scs_named_value_t *const attributes)
@@ -326,29 +246,57 @@ void telemetry_print_attributes(const scs_named_value_t *const attributes)
 
 SCSAPI_VOID telemetry_configuration(const scs_event_t event, const void *const event_info, const scs_context_t UNUSED(context))
 {
-	// Here we just print the configuration info.
-
 	const struct scs_telemetry_configuration_t *const info = static_cast<const scs_telemetry_configuration_t *>(event_info);
 	log_line("Configuration: %s", info->id);
-
 	telemetry_print_attributes(info->attributes);
 
-	print_header = true;
+	if( strcmp(info->id, "job") == 0 ) {
+		for( const scs_named_value_t *current = info->attributes; current->name; ++current) {
+			if( strcmp(current->name, "cargo") == 0 ) {
+				strcpy( shared_game_data->job.cargo, current->value.value_string.value );
+			}
+		}
+	} else if( strcmp(info->id, "truck") == 0 ) {
+		for( const scs_named_value_t *current = info->attributes; current->name; ++current) {
+			if( strcmp(current->name, "rpm.limit") == 0 ) {
+				shared_game_data->truck.rpm_limit = current->value.value_float.value;
+			} else if( strcmp(current->name, "retarder.steps") == 0 ) {
+				shared_game_data->truck.retarder_step_count = current->value.value_u32.value;
+			}
+		}
+	}
 }
 
 SCSAPI_VOID telemetry_gameplay_event(const scs_event_t event, const void *const event_info, const scs_context_t UNUSED(context))
 {
 	// Here we just print the event info.
-
 	const struct scs_telemetry_gameplay_event_t *const info = static_cast<const scs_telemetry_gameplay_event_t *>(event_info);
 	log_line("Gameplay event: %s", info->id);
 
 	telemetry_print_attributes(info->attributes);
-
-	print_header = true;
 }
 
 // Handling of individual channels.
+
+SCSAPI_VOID telemetry_store_dplacement(const scs_string_t name, const scs_u32_t index, const scs_value_t *const value, const scs_context_t context)
+{
+	assert(context);
+	telemetry_state_t *const state = static_cast<telemetry_state_t *>(context);
+
+	// This callback was registered with the SCS_TELEMETRY_CHANNEL_FLAG_no_value flag
+	// so it is called even when the value is not available.
+	if (!value) {
+		state->position_available = false;
+		return;
+	}
+
+	assert(value);
+	assert(value->type == SCS_VALUE_TYPE_dplacement);
+	state->position_available = true;
+	state->x = (float)value->value_dplacement.position.x;
+	state->y = (float)value->value_dplacement.position.y;
+	state->z = (float)value->value_dplacement.position.z;
+}
 
 SCSAPI_VOID telemetry_store_orientation(const scs_string_t name, const scs_u32_t index, const scs_value_t *const value, const scs_context_t context)
 {
@@ -391,6 +339,28 @@ SCSAPI_VOID telemetry_store_s32(const scs_string_t name, const scs_u32_t index, 
 	assert(value->type == SCS_VALUE_TYPE_s32);
 	assert(context);
 	*static_cast<int *>(context) = value->value_s32.value;
+}
+
+SCSAPI_VOID telemetry_store_u32(const scs_string_t name, const scs_u32_t index, const scs_value_t *const value, const scs_context_t context)
+{
+	// The SCS_TELEMETRY_CHANNEL_FLAG_no_value flag was not provided during registration
+	// so this callback is only called when a valid value is available.
+
+	assert(value);
+	assert(value->type == SCS_VALUE_TYPE_u32);
+	assert(context);
+	*static_cast<uint32_t *>(context) = value->value_u32.value;
+}
+
+SCSAPI_VOID telemetry_store_bool(const scs_string_t name, const scs_u32_t index, const scs_value_t *const value, const scs_context_t context)
+{
+	// The SCS_TELEMETRY_CHANNEL_FLAG_no_value flag was not provided during registration
+	// so this callback is only called when a valid value is available.
+
+	assert(value);
+	assert(value->type == SCS_VALUE_TYPE_bool);
+	assert(context);
+	*static_cast<bool *>(context) = value->value_bool.value;
 }
 
 /**
@@ -489,33 +459,140 @@ SCSAPI_RESULT scs_telemetry_init(const scs_u32_t version, const scs_telemetry_in
 	// (SCS_RESULT_unsupported_type). For purpose of this example we ignore the failues
 	// so the unsupported channels will remain at theirs default value.
 
-	version_params->register_for_channel(SCS_TELEMETRY_TRUCK_CHANNEL_world_placement, SCS_U32_NIL, SCS_VALUE_TYPE_euler, SCS_TELEMETRY_CHANNEL_FLAG_no_value, telemetry_store_orientation, &telemetry);
+	version_params->register_for_channel(SCS_TELEMETRY_TRUCK_CHANNEL_world_placement, SCS_U32_NIL, SCS_VALUE_TYPE_dplacement, SCS_TELEMETRY_CHANNEL_FLAG_no_value, telemetry_store_dplacement, &telemetry);
 	version_params->register_for_channel(SCS_TELEMETRY_TRUCK_CHANNEL_speed, SCS_U32_NIL, SCS_VALUE_TYPE_float, SCS_TELEMETRY_CHANNEL_FLAG_none, telemetry_store_float, &telemetry.speed);
 	version_params->register_for_channel(SCS_TELEMETRY_TRUCK_CHANNEL_engine_rpm, SCS_U32_NIL, SCS_VALUE_TYPE_float, SCS_TELEMETRY_CHANNEL_FLAG_none, telemetry_store_float, &telemetry.rpm);
-	version_params->register_for_channel(SCS_TELEMETRY_TRUCK_CHANNEL_engine_gear, SCS_U32_NIL, SCS_VALUE_TYPE_s32, SCS_TELEMETRY_CHANNEL_FLAG_none, telemetry_store_s32, &telemetry.gear);
+	version_params->register_for_channel(SCS_TELEMETRY_TRUCK_CHANNEL_displayed_gear, SCS_U32_NIL, SCS_VALUE_TYPE_s32, SCS_TELEMETRY_CHANNEL_FLAG_none, telemetry_store_s32, &telemetry.gear);
+	version_params->register_for_channel(
+		SCS_TELEMETRY_TRUCK_CHANNEL_navigation_distance,
+		SCS_U32_NIL, SCS_VALUE_TYPE_float,
+		SCS_TELEMETRY_CHANNEL_FLAG_none, telemetry_store_float,
+		&navigation_data.distance_m
+	);
+	version_params->register_for_channel(
+		SCS_TELEMETRY_TRUCK_CHANNEL_navigation_time,
+		SCS_U32_NIL, SCS_VALUE_TYPE_float,
+		SCS_TELEMETRY_CHANNEL_FLAG_none, telemetry_store_float,
+		&navigation_data.time_s
+	);
+	version_params->register_for_channel(
+		SCS_TELEMETRY_TRUCK_CHANNEL_navigation_speed_limit,
+		SCS_U32_NIL, SCS_VALUE_TYPE_float,
+		SCS_TELEMETRY_CHANNEL_FLAG_none, telemetry_store_float,
+		&navigation_data.speed_limit_mps
+	);
+	version_params->register_for_channel(
+		SCS_TELEMETRY_CHANNEL_game_time,
+		SCS_U32_NIL, SCS_VALUE_TYPE_u32,
+		SCS_TELEMETRY_CHANNEL_FLAG_none, telemetry_store_u32,
+		&telemetry.game_time
+	);
+	version_params->register_for_channel(
+		SCS_TELEMETRY_TRUCK_CHANNEL_fuel,
+		SCS_U32_NIL, SCS_VALUE_TYPE_float,
+		SCS_TELEMETRY_CHANNEL_FLAG_none, telemetry_store_float,
+		&telemetry.fuel
+	);
+	version_params->register_for_channel(
+		SCS_TELEMETRY_TRUCK_CHANNEL_fuel_range,
+		SCS_U32_NIL, SCS_VALUE_TYPE_float,
+		SCS_TELEMETRY_CHANNEL_FLAG_none, telemetry_store_float,
+		&telemetry.fuel_range
+	);
+	version_params->register_for_channel(
+		SCS_TELEMETRY_TRUCK_CHANNEL_odometer,
+		SCS_U32_NIL, SCS_VALUE_TYPE_float,
+		SCS_TELEMETRY_CHANNEL_FLAG_none, telemetry_store_float,
+		&telemetry.odometer
+	);
 
-	// Remember the function we will use for logging.
+	version_params->register_for_channel(
+		SCS_TELEMETRY_TRUCK_CHANNEL_parking_brake,
+		SCS_U32_NIL, SCS_VALUE_TYPE_bool,
+		SCS_TELEMETRY_CHANNEL_FLAG_none, telemetry_store_bool,
+		&telemetry.parking_brake
+	);
+	version_params->register_for_channel(
+		SCS_TELEMETRY_TRUCK_CHANNEL_motor_brake,
+		SCS_U32_NIL, SCS_VALUE_TYPE_bool,
+		SCS_TELEMETRY_CHANNEL_FLAG_none, telemetry_store_bool,
+		&telemetry.engine_brake
+	);
+	version_params->register_for_channel(
+		SCS_TELEMETRY_TRUCK_CHANNEL_retarder_level,
+		SCS_U32_NIL, SCS_VALUE_TYPE_u32,
+		SCS_TELEMETRY_CHANNEL_FLAG_none, telemetry_store_u32,
+		&telemetry.retarder_level
+	);
+	version_params->register_for_channel(
+		SCS_TELEMETRY_TRUCK_CHANNEL_lblinker,
+		SCS_U32_NIL, SCS_VALUE_TYPE_bool,
+		SCS_TELEMETRY_CHANNEL_FLAG_none, telemetry_store_bool,
+		&telemetry.left_blinker
+	);
+	version_params->register_for_channel(
+		SCS_TELEMETRY_TRUCK_CHANNEL_rblinker,
+		SCS_U32_NIL, SCS_VALUE_TYPE_bool,
+		SCS_TELEMETRY_CHANNEL_FLAG_none, telemetry_store_bool,
+		&telemetry.right_blinker
+	);
+	version_params->register_for_channel(
+		SCS_TELEMETRY_TRUCK_CHANNEL_hazard_warning,
+		SCS_U32_NIL, SCS_VALUE_TYPE_bool,
+		SCS_TELEMETRY_CHANNEL_FLAG_none, telemetry_store_bool,
+		&telemetry.hazard_warning
+	);
+	version_params->register_for_channel(
+		SCS_TELEMETRY_TRUCK_CHANNEL_light_parking,
+		SCS_U32_NIL, SCS_VALUE_TYPE_bool,
+		SCS_TELEMETRY_CHANNEL_FLAG_none, telemetry_store_bool,
+		&telemetry.parking_lights
+	);
+	version_params->register_for_channel(
+		SCS_TELEMETRY_TRUCK_CHANNEL_light_low_beam,
+		SCS_U32_NIL, SCS_VALUE_TYPE_bool,
+		SCS_TELEMETRY_CHANNEL_FLAG_none, telemetry_store_bool,
+		&telemetry.low_beams
+	);
+	version_params->register_for_channel(
+		SCS_TELEMETRY_TRUCK_CHANNEL_light_high_beam,
+		SCS_U32_NIL, SCS_VALUE_TYPE_bool,
+		SCS_TELEMETRY_CHANNEL_FLAG_none, telemetry_store_bool,
+		&telemetry.high_beams
+	);
+	version_params->register_for_channel(
+		SCS_TELEMETRY_TRUCK_CHANNEL_brake_air_pressure_warning,
+		SCS_U32_NIL, SCS_VALUE_TYPE_bool,
+		SCS_TELEMETRY_CHANNEL_FLAG_none, telemetry_store_bool,
+		&telemetry.air_pressure_warning
+	);
+	version_params->register_for_channel(
+		SCS_TELEMETRY_TRUCK_CHANNEL_oil_pressure_warning,
+		SCS_U32_NIL, SCS_VALUE_TYPE_bool,
+		SCS_TELEMETRY_CHANNEL_FLAG_none, telemetry_store_bool,
+		&telemetry.oil_pressure_warning
+	);
 
+	// Send log to the in-game developer console.
 	game_log = version_params->common.log;
-	game_log(SCS_LOG_TYPE_message, "Initializing telemetry log example");
+	game_log(SCS_LOG_TYPE_message, "[NUT] Initializing telemetry log example");
 
-	// Set the structure with defaults.
-
+	// Initialize the local structures to be zerod out.
 	memset(&telemetry, 0, sizeof(telemetry));
-	print_header = true;
+	memset(&navigation_data, 0, sizeof(navigation_data));
 	last_timestamp = static_cast<scs_timestamp_t>(-1);
-
-	// Initially the game is paused.
-
-	output_paused = true;
 
 	// Create shared memory for other process to read from this library's data.
 	// 	1. Create the shared memory object.
 	// 	2. Configure the size of the shared memory.
 	//	3. Memory map the shared memory object.
-	shared_memory_file_descriptor = shm_open( SHARED_MEMORY_TELEMETRY_NAME, O_CREAT | O_RDWR, 0666 );
-	ftruncate( shared_memory_file_descriptor, shared_memory_size );
-	shared_telemetry = (telemetry_state_t *)mmap( 0, shared_memory_size, PROT_WRITE, MAP_SHARED, shared_memory_file_descriptor, 0 );
+	shm_game_data_fd = shm_open(
+		SHARED_MEMORY_GAME_DATA_NAME, O_CREAT | O_RDWR, 0666 );
+	ftruncate( shm_game_data_fd, GAME_DATA_SHM_SIZE );
+	shared_game_data = (game_data_t *)mmap( 0, GAME_DATA_SHM_SIZE,
+		PROT_WRITE, MAP_SHARED, shm_game_data_fd, 0 );
+	shared_game_data->paused = true;
+	shared_game_data->valid = true;
 
 	return SCS_RESULT_ok;
 }
@@ -554,7 +631,9 @@ BOOL APIENTRY DllMain(
 void __attribute__ ((destructor)) unload(void)
 {
 	finish_log();
-	shm_unlink( SHARED_MEMORY_TELEMETRY_NAME );
-	munmap( shared_telemetry, shared_memory_size );
+
+	shared_game_data->valid = false;
+	shm_unlink( SHARED_MEMORY_GAME_DATA_NAME );
+	munmap( shared_game_data, GAME_DATA_SHM_SIZE );
 }
 #endif
