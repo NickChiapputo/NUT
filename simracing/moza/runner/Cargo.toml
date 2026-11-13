@@ -1,0 +1,10 @@
+[package]
+name = "runner"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+ctrlc = "3.5.2"
+moza = { path = "../moza" }
+shared_memory = { path = "../shared_memory" }
+overlay = { path = "../overlay" }

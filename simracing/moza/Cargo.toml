@@ -1,0 +1,8 @@
+[workspace]
+members = [
+    "runner",
+    "moza",
+    "shared_memory",
+    "overlay"
+]
+resolver = "3"
