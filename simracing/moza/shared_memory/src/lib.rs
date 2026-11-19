@@ -164,12 +164,65 @@ impl PCars2Data {
         self.data.access().current_time
     }
 
+    pub fn current_sector(&self) -> u32 {
+        let index = self.data.access().viewed_participant_index as usize;
+        self.get_participants()[index].current_sector
+    }
+
+    pub fn best_lap_time(&self) -> f32 {
+        self.data.access().best_lap_time
+    }
+
+    pub fn best_sector1_time(&self) -> f32 {
+        self.data.access().fastest_sector1_time
+    }
+
+    pub fn best_sector2_time(&self) -> f32 {
+        self.data.access().fastest_sector2_time
+    }
+
+    pub fn best_sector3_time(&self) -> f32 {
+        self.data.access().fastest_sector3_time
+    }
+
     pub fn last_lap_time(&self) -> f32 {
         self.data.access().last_lap_time
     }
 
     pub fn is_lap_valid(&self) -> bool {
         !(self.data.access().lap_invalidated == 1)
+    }
+
+    pub fn world_best_sector1_time(&self) -> f32 {
+        self.data.access().world_fastest_sector1_time
+    }
+
+    pub fn world_best_sector2_time(&self) -> f32 {
+        self.data.access().world_fastest_sector2_time
+    }
+
+    pub fn world_best_sector3_time(&self) -> f32 {
+        self.data.access().world_fastest_sector3_time
+    }
+
+    pub fn world_best_lap_time(&self) -> f32 {
+        self.data.access().world_fastest_lap_time
+    }
+
+    pub fn personal_best_sector1_time(&self) -> f32 {
+        self.data.access().personal_fastest_sector1_time
+    }
+
+    pub fn personal_best_sector2_time(&self) -> f32 {
+        self.data.access().personal_fastest_sector2_time
+    }
+
+    pub fn personal_best_sector3_time(&self) -> f32 {
+        self.data.access().personal_fastest_sector3_time
+    }
+
+    pub fn personal_best_lap_time(&self) -> f32 {
+        self.data.access().personal_fastest_lap_time
     }
 
     pub fn game_state(&self) -> pcars2::GameState {
@@ -219,7 +272,7 @@ impl PCars2Data {
         self.session_state() != pcars2::SessionState::SessionFormationLap
     }
 
-    pub fn get_active_participant(&self) -> pcars2::ParticipantInfoSharedMemory {
+    pub fn get_active_participant(&self) -> ParticipantInfo {
         let mut active_participant = pcars2::ParticipantInfoSharedMemory::default();
         for participant in &self.data.access().participant_info {
             if participant.is_active != 0 {
@@ -228,7 +281,7 @@ impl PCars2Data {
             }
         }
 
-        active_participant
+        (&active_participant).into()
     }
 
     pub fn track_length(&self) -> f32 {
@@ -237,6 +290,10 @@ impl PCars2Data {
 
     pub fn sequence_number(&self) -> u32 {
         self.data.access().sequence_number
+    }
+
+    pub fn get_viewed_participant_index(&self) -> usize {
+        self.data.access().viewed_participant_index as usize
     }
 }
 
