@@ -189,29 +189,29 @@ impl Overlay {
                     self.lap_data[num_laps_in_list - 1].valid = lap_valid;
                 } else {
                     if num_laps_in_list > 0 {
-                        let previous_lap = self.lap_data[num_laps_in_list - 1];
-
                         // need to update the last sector 3 time recording since the last tick doesn't get it before
-                        // we get to the next lap.
+                        // we get to the next lap. The previous lap sector 3 time will stay populated until sector 3
+                        // is started again.
                         self.lap_data[num_laps_in_list - 1].sector3_time = data.sector_3_time();
+                        self.lap_data[num_laps_in_list - 1].time = data.last_lap_time();
 
-                        // Set session best flags
-                        self.lap_data[num_laps_in_list - 1].session_best_lap = previous_lap.valid && previous_lap.time == data.best_lap_time();
-                        self.lap_data[num_laps_in_list - 1].session_best_sector1 = previous_lap.valid && previous_lap.sector1_time == data.best_sector1_time();
-                        self.lap_data[num_laps_in_list - 1].session_best_sector2 = previous_lap.valid && previous_lap.sector2_time == data.best_sector2_time();
-                        self.lap_data[num_laps_in_list - 1].session_best_sector3 = previous_lap.valid && previous_lap.sector3_time == data.best_sector3_time();
-
-                        // Set world best flags
-                        self.lap_data[num_laps_in_list - 1].world_best_lap = previous_lap.valid && previous_lap.time == data.world_best_lap_time();
-                        self.lap_data[num_laps_in_list - 1].world_best_sector1 = previous_lap.valid && previous_lap.sector1_time == data.world_best_sector1_time();
-                        self.lap_data[num_laps_in_list - 1].world_best_sector2 = previous_lap.valid && previous_lap.sector2_time == data.world_best_sector2_time();
-                        self.lap_data[num_laps_in_list - 1].world_best_sector3 = previous_lap.valid && previous_lap.sector3_time == data.world_best_sector3_time();
-
-                        // Set personal best flags
-                        self.lap_data[num_laps_in_list - 1].personal_best_lap = previous_lap.valid && previous_lap.time == data.personal_best_lap_time();
-                        self.lap_data[num_laps_in_list - 1].personal_best_sector1 = previous_lap.valid && previous_lap.sector1_time == data.personal_best_sector1_time();
-                        self.lap_data[num_laps_in_list - 1].personal_best_sector2 = previous_lap.valid && previous_lap.sector2_time == data.personal_best_sector2_time();
-                        self.lap_data[num_laps_in_list - 1].personal_best_sector3 = previous_lap.valid && previous_lap.sector3_time == data.personal_best_sector3_time();
+                        // Update flags for all previous laps.
+                        for lap in &mut self.lap_data {
+                            set_best_flags(lap,
+                                data.world_best_lap_time(),
+                                data.world_best_sector1_time(),
+                                data.world_best_sector2_time(),
+                                data.world_best_sector3_time(),
+                                data.personal_best_lap_time(),
+                                data.personal_best_sector1_time(),
+                                data.personal_best_sector2_time(),
+                                data.personal_best_sector3_time(),
+                                data.best_lap_time(),
+                                data.best_sector1_time(),
+                                data.best_sector2_time(),
+                                data.best_sector3_time()
+                            );
+                        }
                     }
 
                     self.lap_data.push(Lap {
@@ -629,6 +629,40 @@ fn get_time_attack_time_color(valid: bool, world_best: bool, personal_best: bool
     } else {
         FOREGROUND_COLOR
     }
+}
+
+fn set_best_flags(
+    lap: &mut Lap,
+    world_best_lap: f32,
+    world_best_sector1: f32,
+    world_best_sector2: f32,
+    world_best_sector3: f32,
+    personal_best_lap: f32,
+    personal_best_sector1: f32,
+    personal_best_sector2: f32,
+    personal_best_sector3: f32,
+    session_best_lap: f32,
+    session_best_sector1: f32,
+    session_best_sector2: f32,
+    session_best_sector3: f32,
+) {
+    // Set session best flags
+    (*lap).session_best_lap = lap.valid && lap.time == session_best_lap;
+    (*lap).session_best_sector1 = lap.valid && lap.sector1_time == session_best_sector1;
+    (*lap).session_best_sector2 = lap.valid && lap.sector2_time == session_best_sector2;
+    (*lap).session_best_sector3 = lap.valid && lap.sector3_time == session_best_sector3;
+
+    // Set world best flags
+    (*lap).world_best_lap = lap.valid && lap.time == world_best_lap;
+    (*lap).world_best_sector1 = lap.valid && lap.sector1_time == world_best_sector1;
+    (*lap).world_best_sector2 = lap.valid && lap.sector2_time == world_best_sector2;
+    (*lap).world_best_sector3 = lap.valid && lap.sector3_time == world_best_sector3;
+
+    // Set personal best flags
+    (*lap).personal_best_lap = lap.valid && lap.time == personal_best_lap;
+    (*lap).personal_best_sector1 = lap.valid && lap.sector1_time == personal_best_sector1;
+    (*lap).personal_best_sector2 = lap.valid && lap.sector2_time == personal_best_sector2;
+    (*lap).personal_best_sector3 = lap.valid && lap.sector3_time == personal_best_sector3;
 }
 
 /// Calculate foreground text colors from best and last laps compared to fastest in the session.
